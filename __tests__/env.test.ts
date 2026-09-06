@@ -59,4 +59,32 @@ describe("sign-in allowlist", () => {
     expect(isEmailAllowedToSignIn(undefined)).toBe(false);
     expect(isEmailAllowedToSignIn("")).toBe(false);
   });
+
+  // GHSA-7rqj-j65f-68wh: Auth.js normalizes an address after validating it, so
+  // a homoglyph separator can make the checked address differ from the one the
+  // magic link reaches. These must never be treated as the allowlisted address.
+  it("rejects homoglyph separators that NFKC-fold onto an allowed address", () => {
+    vi.stubEnv("ALLOWED_EMAILS", "owner@example.com");
+    // U+FF20 FULLWIDTH COMMERCIAL AT folds to "@" under NFKC.
+    expect(isEmailAllowedToSignIn("owner＠example.com")).toBe(false);
+    // U+FF45 FULLWIDTH LATIN SMALL LETTER E folds to "e".
+    expect(isEmailAllowedToSignIn("ownｅr@example.com")).toBe(false);
+  });
+
+  it("rejects non-ASCII addresses outright when an allowlist is set", () => {
+    vi.stubEnv("ALLOWED_EMAILS", "owner@example.com");
+    expect(isEmailAllowedToSignIn("ownér@example.com")).toBe(false);
+    expect(isEmailAllowedToSignIn("owner@exámple.com")).toBe(false);
+  });
+
+  it("rejects addresses carrying more than one separator", () => {
+    vi.stubEnv("ALLOWED_EMAILS", "owner@example.com");
+    expect(isEmailAllowedToSignIn("owner@example.com@evil.test")).toBe(false);
+    expect(isEmailAllowedToSignIn("owner@@example.com")).toBe(false);
+  });
+
+  it("still accepts the plain allowlisted address", () => {
+    vi.stubEnv("ALLOWED_EMAILS", "owner@example.com");
+    expect(isEmailAllowedToSignIn("owner@example.com")).toBe(true);
+  });
 });

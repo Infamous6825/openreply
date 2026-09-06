@@ -59,6 +59,32 @@ export function getMetaGraphApiVersion(): string {
  * list of addresses. Left unset, sign-in behaves exactly as before, so an
  * existing deployment is unaffected.
  */
+/**
+ * Canonicalize an address before it is compared against the allowlist.
+ *
+ * Auth.js validates an address *before* Unicode-normalizing it
+ * (GHSA-7rqj-j65f-68wh), so a homoglyph "@" such as U+FF20 can make the
+ * address this check inspects differ from the one the magic link is finally
+ * delivered to. Normalizing first and then refusing anything outside
+ * printable ASCII removes that gap: an allowlist can only be reasoned about
+ * when the address has exactly one unambiguous local part and domain.
+ *
+ * The trade-off is that genuinely internationalized addresses are rejected.
+ * That is the right default for an allowlisted single-tenant instance, where
+ * the list is a handful of known ASCII addresses.
+ *
+ * Returns null when the address cannot be canonicalized, which callers treat
+ * as "not allowed" rather than falling back to a looser comparison.
+ */
+function canonicalizeEmail(value: string): string | null {
+  const normalized = value.normalize("NFKC").trim().toLowerCase();
+  if (normalized !== value.trim().toLowerCase()) return null;
+  if (!/^[!-?A-~]+@[!-?A-~]+$/.test(normalized)) {
+    return null;
+  }
+  return normalized;
+}
+
 export function isEmailAllowedToSignIn(
   email: string | null | undefined
 ): boolean {
@@ -69,7 +95,11 @@ export function isEmailAllowedToSignIn(
 
   if (allowed.length === 0) return true;
   if (!email) return false;
-  return allowed.includes(email.toLowerCase());
+
+  const candidate = canonicalizeEmail(email);
+  if (!candidate) return false;
+
+  return allowed.some((entry) => canonicalizeEmail(entry) === candidate);
 }
 
 export const serverEnvSchema = z.object({
