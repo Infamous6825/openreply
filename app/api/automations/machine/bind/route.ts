@@ -23,7 +23,9 @@ export const dynamic = "force-dynamic";
 
 const bodySchema = z.object({
   keyword: z.string().trim().min(1).max(100),
-  postUrl: z.string().url(),
+  // Anything else can't be resolved by getUserMedia/findMediaByPermalink below,
+  // which only ever look at the connected Instagram account's own media.
+  postUrl: z.string().url().regex(/^https:\/\/(www\.)?instagram\.com\//, "postUrl must be an instagram.com URL"),
   postId: z.string().trim().min(1).optional(),
 });
 
