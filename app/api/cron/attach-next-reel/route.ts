@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db/client";
 import { getUserMedia, type InstagramMedia } from "@/lib/meta/client";
 import { decryptToken } from "@/lib/meta/oauth";
+import { captionNamesKeyword } from "@/lib/automations/bind-next-reel";
 
 /**
  * Binds "next reel" campaigns to a real post.
@@ -70,9 +71,13 @@ export async function GET(request: NextRequest) {
     }
 
     for (const automation of automations) {
-      // The "next" reel = the earliest one posted after the campaign was created.
+      // The "next" reel = the earliest one posted after the campaign was
+      // created WHOSE CAPTION NAMES THE CAMPAIGN'S KEYWORD. Without the caption
+      // check every pending campaign landed on the same reel.
       const nextReel = reels.find(
-        (reel) => new Date(reel.timestamp) > automation.createdAt
+        (reel) =>
+          new Date(reel.timestamp) > automation.createdAt &&
+          captionNamesKeyword(reel.caption, automation.keywords)
       );
       if (!nextReel) continue;
 

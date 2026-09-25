@@ -40,3 +40,18 @@ export function findMediaByPermalink(
   if (!code) return null;
   return media.find((m) => reelShortcode(m.permalink ?? "") === code) ?? null;
 }
+
+/**
+ * True when the reel's caption names one of the campaign's keywords as a whole
+ * word (case-insensitive). The attach-next-reel cron used to bind every pending
+ * campaign to the first reel posted after it — on 2026-09-24 that put 37
+ * campaigns on one reel. A reel's caption carries its own "Comment X", so the
+ * caption is what decides which campaign it gets.
+ */
+export function captionNamesKeyword(caption: string | null | undefined, keywords: string[]): boolean {
+  const text = (caption ?? "").toUpperCase();
+  return keywords.some((k) => {
+    const kw = normalizeKeyword(k).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    return kw.length > 0 && new RegExp(`(^|[^A-Z0-9])${kw}([^A-Z0-9]|$)`).test(text);
+  });
+}

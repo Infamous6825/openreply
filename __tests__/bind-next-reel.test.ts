@@ -51,3 +51,18 @@ describe("reelShortcode / findMediaByPermalink", () => {
     expect(findMediaByPermalink(media, "https://www.instagram.com/reel/ZZZ/")).toBeNull();
   });
 });
+
+import { captionNamesKeyword } from "@/lib/automations/bind-next-reel";
+
+describe("captionNamesKeyword", () => {
+  it("matches the keyword as a whole word, any case", () => {
+    expect(captionNamesKeyword("Comment 'harness' for the repo", ["HARNESS"])).toBe(true);
+    expect(captionNamesKeyword('Comment "ROUTER" and I\'ll send it', ["router"])).toBe(true);
+  });
+  it("rejects captions that do not name the keyword", () => {
+    expect(captionNamesKeyword("Comment 'harness' for the repo", ["ROUTER"])).toBe(false);
+    expect(captionNamesKeyword("#DesignSystems", ["DESIGN"])).toBe(false);
+    expect(captionNamesKeyword(null, ["ADS"])).toBe(false);
+    expect(captionNamesKeyword("anything", [])).toBe(false);
+  });
+});
